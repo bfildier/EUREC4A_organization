@@ -139,6 +139,8 @@ if __name__ == "__main__":
     f.computePW(qv,temp,pres,z)
     # Compute water path above z
     f.computeWPaboveZ(qv,pres_mean,z_axis=dim_z)
+    # Compute water path above z
+    f.computeSaturatedWPaboveZ(temp,pres_mean,z_axis=dim_z)
     # Compute PW truncated at qrad peak
     f.computePW(qv,temp,pres,z,i_z_max=f.i_net_peak,attr_name='pw_below_net_qrad_peak')
     # Compute PW truncated at lw qrad peak

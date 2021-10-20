@@ -237,44 +237,52 @@ class RadiativeScaling():
     def computeScalingPeakMagnitude(self,B_star=None):
         """Analytical aprpoximation of Qrad peak magnitude, using reference wavenumber nu_star:
             H^\star = -g\c_p * beta^\star/p^\star * \pi B_\nu(T^\star) * \Delta \nu / e
-        Stores the result."""
+        Stores the result.
+        
+        Arguments:
+            - B_star: prescribed Planck function, in J.s-1.sr-1.m-2.m (default: None)
+        """
 
         delta_nu = 73.1 # cm-1
         m_to_cm = 1e2
         day_to_seconds = 86400
-        
+
         N_s = self.pres.shape[0]
         
+        # first save B_star argument value
+        B_star_prescribed = B_star
+
         which_peak = 'beta_peak', 'lw_peak'
-        if B_star is None:
+        if B_star_prescribed is None:
             suffix = ''
         else:
-            suffix = '_B'+''.join(("%2.2f"%(0.004*100)).split("."))
+            suffix = '_B'+''.join(("%2.2f"%(B_star_prescribed*100)).split("."))
         terms = "scaling_magnitude","nu_star","kappa_star","B_star"
-        
+
         # init
         for peak_name in which_peak:
             for prefix in terms:
-                
-                if prefix not in ['nu_star','kappa_star'] or B_star is None:
+
+                if prefix not in ['nu_star','kappa_star'] or B_star_prescribed is None:
                     setattr(self,"%s_%s%s"%(prefix,peak_name,suffix),np.full(N_s,np.nan))
 
         # compute for each profile
         for i_s in range(N_s):
             
-            def computeHpeak(beta_star,i_star,B_star=None):
+            def computeHpeak(beta_star,i_star,B_star_prescribed=None):
                 """B_star in SI units: J.s-1.sr-1.m-2.m. Good reference value
                 is 0.004 (max at 300K is about 0.0045)"""
                 
                 p_star = self.pres[i_s,i_star]
                 
-                if B_star is None:
+                if B_star_prescribed is None: # Careful to go meet this condition not only once, by not reinitializing B_star from its value given in argument
                     temp_star = self.temp[i_s,i_star]
                     W_star = self.rad_features.wp_z[i_s,i_star]
                     kappa_star = 1/W_star
                     nu_star = self.nu(kappa_star)
                     B_star = self.planck(nu_star, temp_star)
                 else:
+                    B_star = B_star_prescribed
                     nu_star = np.nan 
                     kappa_star = np.nan
                 
@@ -288,14 +296,14 @@ class RadiativeScaling():
                     #- scaled magnitude at beta peak
                     beta_star = self.rad_features.beta_peak[i_s]
                     i_star = self.rad_features.i_beta_peak[i_s]
-                    
+
                 elif peak_name == 'lw_peak':
                     #- scaled magnitude at lw peak
                     i_star = self.rad_features.lw_peaks.i_lw_peak[i_s]
                     beta_star = self.rad_features.beta_smooth[i_s,i_star]
-                        
+
                 # compute
-                scaling_magnitude, nu_star, kappa_star, B_star = computeHpeak(beta_star,i_star,B_star)
+                scaling_magnitude, nu_star, kappa_star, B_star = computeHpeak(beta_star,i_star,B_star_prescribed)
                 # save
                 for prefix in terms:
                     

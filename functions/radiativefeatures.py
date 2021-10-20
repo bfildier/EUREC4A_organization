@@ -15,6 +15,7 @@ import os
 # moduledir = os.path.join()
 # sys.path.insert(0,moduledir)
 from matrixoperators import *
+import thermoFunctions as tf
 
 
 class Features():
@@ -181,26 +182,88 @@ class Features():
         Stores:
             - self.wp_z: water path above each level, Ns x Nz matrix"""
 
-        Ns,Nz = qv.shape
-        self.wp_z = np.full((Ns,Nz),np.nan)
+        Ns,Np = qv.shape
+        self.wp_z = np.full((Ns,Np),np.nan)
         
             
-        for i_z in range(Nz-2):
+        # for i_z in range(Nz-2):
 
-            # test order
-            if np.diff(pres)[0] > 0: # then p (z) is in increasing (decreasing) order
-                slice_z = slice(None,i_z)
-                i_0 = 0
-                i_1 = i_z
-            else:
-                slice_z = slice(i_z,None)
-                i_0 = i_z
-                i_1 = -1
+        #     # test order
+        #     if np.diff(pres)[0] > 0: # then p (z) is in increasing (decreasing) order
+        #         slice_z = slice(None,i_z)
+        #         i_0 = 0
+        #         i_1 = i_z
+        #     else:
+        #         slice_z = slice(i_z,None)
+        #         i_0 = i_z
+        #         i_1 = -1
             
-            # compute integral
-            # print(pres[slice_z].shape, qv[:,slice_z].shape)
-            self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=qv,pres=pres,p0=pres[i_0],p1=pres[i_1],z_axis=z_axis)
+        #     # compute integral
+        #     # print(pres[slice_z].shape, qv[:,slice_z].shape)
+        #     self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=qv,pres=pres,p0=pres[i_0],p1=pres[i_1],z_axis=z_axis)
+        
+        ##-- new version below, mo.pressureIntegral only works if pressure is increasing with index
+        
+        p_increasing = np.diff(pres)[0] > 0
+    
+        for i_p in range(Np-2):
+            # self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=data.specific_humidity[:,i_z:],pres=pres[i_z:],p_levmin=pres[i_z],p_levmax=pres[-1],z_axis=z_axis)
+        
+            if p_increasing:
+                
+                arr = qv
+                p = pres
+                p0 = p[0]
+                p1 = p[i_p]
+                i_w = i_p
+                
+            else:    
 
+                arr = np.flip(qv,axis=z_axis)
+                p = np.flip(pres)
+                p0 = p[0]
+                p1 = p[i_p]
+                i_w = Np-1-i_p
+                
+            self.wp_z[:,i_w] = self.mo.pressureIntegral(arr=arr,pres=p,p0=p0,p1=p1,z_axis=z_axis)
+
+    def computeSaturatedWPaboveZ(self,temp,pres,z_axis=1):
+        """Calculates the integrated water path of saturation specific humidity above each level.
+        
+        Arguments:
+            - qv: specific humidity in kg/kg, Ns x Nz matrix
+            - pres: pressure coordinate in hPa, Nz vector
+            
+        Stores:
+            - self.wpsat_z: water path above each level, Ns x Nz matrix"""
+
+        hPa_to_Pa = 1e2
+        
+        Ns,Np = temp.shape
+        self.wpsat_z = np.full((Ns,Np),np.nan)
+        
+        p_increasing = np.diff(pres)[0] > 0
+    
+        for i_p in range(Np-2):
+            # self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=data.specific_humidity[:,i_z:],pres=pres[i_z:],p_levmin=pres[i_z],p_levmax=pres[-1],z_axis=z_axis)
+        
+            if p_increasing:
+                
+                p = pres
+                arr = tf.saturationSpecificHumidity(temp,p*hPa_to_Pa)
+                p0 = p[0]
+                p1 = p[i_p]
+                i_w = i_p
+                
+            else:    
+
+                p = np.flip(pres)
+                arr = tf.saturationSpecificHumidity(np.flip(temp,axis=z_axis),p*hPa_to_Pa)
+                p0 = p[0]
+                p1 = p[i_p]
+                i_w = Np-1-i_p
+                
+            self.wpsat_z[:,i_w] = self.mo.pressureIntegral(arr=arr,pres=p,p0=p0,p1=p1,z_axis=z_axis)
 
 
 class RadiativeFeaturesFromXarray():
@@ -328,11 +391,42 @@ class RadiativeFeaturesFromXarray():
             
     def computeWPaboveZ(self,data,pres,z_axis=1):
 
-        self.wp_z = np.full(data.specific_humidity.shape,np.nan)
-        Nz = data.dims['alt']
+        Ns,Np = data.specific_humidity.shape
+        self.wp_z = np.full((Ns,Np),np.nan)
         
-        for i_z in range(Nz-2):
-            self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=data.specific_humidity[:,i_z:],pres=pres[i_z:],p_levmin=pres[i_z],p_levmax=pres[-1],z_axis=z_axis)
+        p_increasing = np.diff(pres[0])[0] > 0
+    
+        for i_p in range(Np-2):
+            # self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=data.specific_humidity[:,i_z:],pres=pres[i_z:],p_levmin=pres[i_z],p_levmax=pres[-1],z_axis=z_axis)
+        
+            if p_increasing:
+                
+                arr = data.specific_humidity
+                p = pres
+                p0 = p[0]
+                p1 = p[i_p]
+                
+            else:    
+
+                arr = np.flip(data.specific_humidity,axis=z_axis)
+                p = np.flip(pres)
+                p0 = p[0]
+                p_1 = p[i_p]
+                
+        self.wp_z[:,i_z] = self.mo.pressureIntegral(arr=arr,pres=p,p0=p0,p1=p1,z_axis=z_axis)
+    
+    def computeSaturatedWPaboveZ(self,data,pres,z_axis=1):
+
+        Ns,Nz = data.specific_humidity.shape
+        self.wpsat_z = np.full((Ns,Nz),np.nan)        
+        
+        for i_s in range(Ns):
+            
+            temp = data.temperature.values[i_s]
+            qv_star = tf.saturationSpecificHumidity(temp,pres)
+
+            for i_z in range(Nz-2):
+                self.wpsat_z[i_s,i_z] = self.mo.pressureIntegral(arr=qv_star,pres=pres,p0=pres[0],p1=pres[i_z],z_axis=z_axis)
     
         
     
