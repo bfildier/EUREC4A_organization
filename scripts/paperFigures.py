@@ -454,13 +454,13 @@ if __name__ == "__main__":
     xrange = xmax-xmin
     x_fit = np.linspace(xmin-xrange/20,xmax+xrange/20)
     y_fit = intercept + slope*x_fit
-    
+
     # show
     ax.plot(y_fit,x_fit,'k:')
     # write numbers
     ax.text(0.5,0.1,'$Q_{rad} = 1.45 Q_{rad}^{est} -0.4$\n r=%1.2f'%r,transform=ax.transAxes)
-    
-    
+
+
     #-- peak height, using the simpler approximation for peak heights, showing binned profiles each day
     ax = axs[1,0]
     
@@ -527,72 +527,72 @@ if __name__ == "__main__":
     
 #%% (b') comparing radiative peak height and magnitude with scaling -- only final scalings
 
-fig,axs = plt.subplots(ncols=2,figsize=(9,4))
-plt.subplots_adjust(wspace=0.3)
-
-
-#-- peak height, using the simpler approximation for peak heights, showing binned profiles each day
-ax = axs[0]
-
-for day in days:
-# for day in '20200126',:
+    fig,axs = plt.subplots(ncols=2,figsize=(9,4))
+    plt.subplots_adjust(wspace=0.3)
     
-    # proxy peak heights
-    pres_beta_peak = rad_scaling_all[day].rad_features.beta_peaks.pres_beta_peak
-    pres_beta_over_p_peak = rad_scaling_all[day].rad_features.beta_over_p_peaks.pres_beta_over_p_peak
-    pres_scaling_profile_peak = rad_scaling_all[day].rad_features.scaling_profile_peaks.pres_scaling_profile_peak
-    # pres_proxy_peak = pres_beta_over_p_peak
-    pres_proxy_peak = pres_beta_peak
-    # qrad peak height
-    pres_qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak
     
-    s = np.absolute(rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak)
+    #-- peak height, using the simpler approximation for peak heights, showing binned profiles each day
+    ax = axs[0]
     
-    # 1:1 line
-    ax.plot([910,360],[910,360],'k-.',linewidth=0.5,alpha=0.5)
-    # peaks
-    ax.scatter(pres_qrad_peak,pres_proxy_peak,s=s,alpha=0.4)
-
-    ax.invert_xaxis()
-    ax.invert_yaxis()
-    ax.set_xlabel(r'$Q_{rad}$ peak height (hPa)')
-    ax.set_ylabel(r'$\beta$ peak height (hPa)')
-
-#-- peak magnitude, using the simpler approximation for peak magnitudes
-ax = axs[1]
-
-scale_factor = 3
-H_peak_all = {}
-qrad_peak_all = {}
-
-for day in days:
-# for day in '20200126',:
+    for day in days:
+    # for day in '20200126',:
+        
+        # proxy peak heights
+        pres_beta_peak = rad_scaling_all[day].rad_features.beta_peaks.pres_beta_peak
+        pres_beta_over_p_peak = rad_scaling_all[day].rad_features.beta_over_p_peaks.pres_beta_over_p_peak
+        pres_scaling_profile_peak = rad_scaling_all[day].rad_features.scaling_profile_peaks.pres_scaling_profile_peak
+        # pres_proxy_peak = pres_beta_over_p_peak
+        pres_proxy_peak = pres_beta_peak
+        # qrad peak height
+        pres_qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak
+        
+        s = np.absolute(rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak)
+        
+        # 1:1 line
+        ax.plot([910,360],[910,360],'k-.',linewidth=0.5,alpha=0.5)
+        # peaks
+        ax.scatter(pres_qrad_peak,pres_proxy_peak,s=s,alpha=0.4)
     
-    #- approximated peak
-    # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
-    Ns = rad_scaling_all[day].rad_features.pw.size
-    H_peak = np.full(Ns,np.nan)
-    for i_s in range(Ns):
-        # i_z = rad_scaling_all[day].rad_features.scaling_profile_peaks.i_scaling_profile_peak[i_s]
-        H_peak[i_s] = rad_scaling_all[day].scaling_magnitude_lw_peak[i_s]
-    H_peak_all[day] = H_peak
+        ax.invert_xaxis()
+        ax.invert_yaxis()
+        ax.set_xlabel(r'$Q_{rad}$ peak height (hPa)')
+        ax.set_ylabel(r'$\beta$ peak height (hPa)')
     
-    #- true peak
-    qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
-    qrad_peak_all[day] = qrad_peak
+    #-- peak magnitude, using the simpler approximation for peak magnitudes
+    ax = axs[1]
     
-    s = 0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak)
+    scale_factor = 3
+    H_peak_all = {}
+    qrad_peak_all = {}
     
-    # plot
-    ax.scatter(qrad_peak,scale_factor*H_peak,s=s,alpha=0.5)
+    for day in days:
+    # for day in '20200126',:
+        
+        #- approximated peak
+        # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
+        Ns = rad_scaling_all[day].rad_features.pw.size
+        H_peak = np.full(Ns,np.nan)
+        for i_s in range(Ns):
+            # i_z = rad_scaling_all[day].rad_features.scaling_profile_peaks.i_scaling_profile_peak[i_s]
+            H_peak[i_s] = rad_scaling_all[day].scaling_magnitude_lw_peak[i_s]
+        H_peak_all[day] = H_peak
+        
+        #- true peak
+        qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
+        qrad_peak_all[day] = qrad_peak
+        
+        s = 0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak)
+        
+        # plot
+        ax.scatter(qrad_peak,scale_factor*H_peak,s=s,alpha=0.5)
+        
+    ax.set_xlabel(r'$Q_{rad}$ peak magnitude (K/day)')
+    ax.set_ylabel('Simpler scaled magnitude (K/day)')
+    ax.set_ylim((-20.2,0.2))
     
-ax.set_xlabel(r'$Q_{rad}$ peak magnitude (K/day)')
-ax.set_ylabel('Simpler scaled magnitude (K/day)')
-ax.set_ylim((-20.2,0.2))
-
-
-plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.pdf'),bbox_inches='tight')
-plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.png'),bbox_inches='tight')
+    
+    plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.pdf'),bbox_inches='tight')
+    plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.png'),bbox_inches='tight')
 
 
 #%% (b2) comparing radiative peak height and magnitude with full profile scaling -- color by density
@@ -649,7 +649,7 @@ plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.png'),bbo
     
     for day in days:
     # for day in '20200126',:
-        
+ 
         #- approximated peak
         # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
         Ns = rad_scaling_all[day].rad_features.pw.size
@@ -866,5 +866,6 @@ plt.savefig(os.path.join(figdir,'paper_approx_peak_with_final_scalings.png'),bbo
     
     plt.hist(W_peak_all)
     # hist, bin_edges = np.histogram()
-            
-            
+    
+    
+    

@@ -151,40 +151,40 @@ if __name__ == "__main__":
     # Bounds
     ref_var_min = ref_dist_all['20200122'].bins[0]
     ref_var_max = ref_dist_all['20200122'].bins[-1]
-            
+
     ##-- compute radiative peaks from conditional distribution of QRADLW
     
-    # ##-- compute radiative features
-    # print("- compute radiative features") ###---- already computed!
+    ##-- compute radiative features
+    print("- compute radiative features") ###---- already computed!
     
-    # # cond_varid = 'QRADLW'
-    # # ref_varid = 'PW'
-    # z_peak_all = {}
+    # cond_varid = 'QRADLW'
+    # ref_varid = 'PW'
+    z_peak_all = {}
     
-    # for day in days:
+    for day in days:
         
-    #     print(day)
+        print(day)
         
-    #     # data
-    #     QRAD_on_PW = cond_dist_all['QRADLW'][day].cond_mean.T
-    #     QV_on_PW = cond_dist_all['QV'][day].cond_mean.T
-    #     T_on_PW = cond_dist_all['T'][day].cond_mean.T
-    #     P_on_PW = cond_dist_all['P'][day].cond_mean.T
+        # data
+        QRAD_on_PW = cond_dist_all['QRADLW'][day].cond_mean.T
+        QV_on_PW = cond_dist_all['QV'][day].cond_mean.T
+        T_on_PW = cond_dist_all['T'][day].cond_mean.T
+        P_on_PW = cond_dist_all['P'][day].cond_mean.T
     
-    #     # Initialize
-    #     f = Features()
-    #     # Find peaks in net Q_rad
-    #     f.computeQradPeaks(QRAD_on_PW,z,which='lw')
-    #     # Compute PW
-    #     f.computePW(QV_on_PW,T_on_PW,P_on_PW,z)
-    #     # Compute water path above z
-    #     f.computeWPaboveZ(QV_on_PW,pres,z_axis=dim_z)
+        # Initialize
+        f = Features(pres,z)
+        # Find peaks in net Q_rad
+        f.computePeaks(QRAD_on_PW,which='lw')
+        # Compute PW
+        f.computePW(QV_on_PW,T_on_PW,P_on_PW,z)
+        # Compute water path above z
+        f.computeWPaboveZ(QV_on_PW,pres,z_axis=dim_z)
         
-    #     # store
-    #     z_peak_all[day] = f
+        # store
+        z_peak_all[day] = f
 
 #%%
-    ##-- Draw peak heights on same plot
+    ##-- Draw peak heights on same plot -- explore vizualisations 
     
     #--- circle size: uniform
     
@@ -279,11 +279,14 @@ if __name__ == "__main__":
     
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_all_peak_heights_on_PW_sizeQRADLW_colPattern_all_days.pdf'),bbox_inches='tight')
     
-    ### SUMMARY FIGURE
+    
+#%%    ### SUMMARY FIGURE
     #--- (powerpoint) circle size: peak magnitude, all profiles for peak above 5 K/day, 
-    #--- color pattern, all days
+    #--- . color pattern, all days
+    #--- . keep points in latlon box of analysis
     
     fig,ax = plt.subplots(figsize=(5,4),dpi=200)
+    plt.rcParams["legend.markerscale"] = 0.4
     
     qrad_min = np.min([np.nanmin(np.absolute(rad_features_all[day].qrad_lw_peak)) for day in days])
     qrad_max = np.max([np.nanmax(np.absolute(rad_features_all[day].qrad_lw_peak)) for day in days])
@@ -308,14 +311,25 @@ if __name__ == "__main__":
         ax.set_ylabel(r'$z_{peak}$ (km)')
         ax.set_ylim((-0.3,9.6))
 
-    # legend QRAD
-    for d in 5,10,15:
-        setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                  marker='o', linestyle='None',linewidth=0,
-                      markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
-    leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
-    plt.gca().add_artist(leg1)
+    # # legend QRAD
+    # for d in 5,10,15:
+    #     setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
+    #                                               marker='o', linestyle='None',linewidth=0,
+    #                   markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
+    # leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
+    # plt.gca().add_artist(leg1)
+    
 
+    ## Fully-manual legend QRAD
+    rect = mpatches.Rectangle((0.015,0.82), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+    ax.add_patch(rect)
+    for qp,y in zip([5,10,15],[0.94,0.89,0.84]):
+        s = 50*(qp/qrad_max)**2
+        circle = mlines.Line2D([0], [0], marker='o', color='w',
+                        markerfacecolor='r', markersize=s)
+        ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+        ax.text(0.1,y,s=r'$\vert Q_{rad}\vert >%d$ K/day'%qp,fontsize=7,transform=ax.transAxes)
+        
     # legend pattern
     for pat in col_pattern.keys():
         print(pat)
@@ -329,9 +343,11 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_allAbove5Kday_peak_heights_on_PW_sizeQRADLW_colPattern_all_days.png'),bbox_inches='tight')
     
     
+    
     ### SUMMARY FIGURE
     #--- (powerpoint) circle size: peak magnitude, all profiles for peak above 5 K/day, 
-    #--- color pattern, grey for low confidence, more transparency for medium confidence
+    #--- . color pattern, grey for low confidence, more transparency for medium confidence
+    #--- . keep points in latlon box of analysis
     
     fig,ax = plt.subplots(figsize=(5,4),dpi=200)
     
@@ -369,13 +385,24 @@ if __name__ == "__main__":
         ax.set_ylabel(r'$z_{peak}$ (km)')
         ax.set_ylim((-0.3,9.6))
 
-    # legend QRAD
-    for d in 5,10,15:
-        setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                  marker='o', linestyle='None',linewidth=0,
-                      markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
-    leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
-    plt.gca().add_artist(leg1)
+    # # legend QRAD
+    # for d in 5,10,15:
+    #     setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
+    #                                               marker='o', linestyle='None',linewidth=0,
+    #                   markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
+    # leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
+    # plt.gca().add_artist(leg1)
+    
+    ## Fully-manual legend QRAD
+    rect = mpatches.Rectangle((0.015,0.82), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+    ax.add_patch(rect)
+    for qp,y in zip([5,10,15],[0.94,0.89,0.84]):
+        s = 50*(qp/qrad_max)**2
+        circle = mlines.Line2D([0], [0], marker='o', color='w',
+                        markerfacecolor='r', markersize=s)
+        ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+        ax.text(0.1,y,s=r'$\vert Q_{rad}\vert >%d$ K/day'%qp,fontsize=7,transform=ax.transAxes)
+        
 
     # legend pattern
     for pat in col_pattern.keys():
@@ -391,7 +418,8 @@ if __name__ == "__main__":
     
     ### SUMMARY FIGURE
     #--- (powerpoint) circle size: peak magnitude, all profiles for peak above 5 K/day, 
-    #--- color -density-, all days
+    #--- . color -density-, all days
+    #--- . only keep points in latlon box of analysis
     
     def scatterDensity(ax,x,y,s,alpha,edgecolor=None):
         xy = np.vstack([x,y])
@@ -431,13 +459,23 @@ if __name__ == "__main__":
     ax.set_ylabel(r'$z_{peak}$ (km)')
     ax.set_ylim((-0.3,9.6))
 
-    # legend QRAD
-    for d in 5,10,15:
-        setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                  marker='o', linestyle='None',linewidth=0,
-                      markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
-    leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
-    plt.gca().add_artist(leg1)
+    # # legend QRAD
+    # for d in 5,10,15:
+    #     setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
+    #                                               marker='o', linestyle='None',linewidth=0,
+    #                   markersize=9*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
+    # leg1 = ax.legend(loc='upper left',handles=[h_5,h_10,h_15],fontsize=7)
+    # plt.gca().add_artist(leg1)
+    
+    ## Fully-manual legend QRAD
+    rect = mpatches.Rectangle((0.015,0.82), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+    ax.add_patch(rect)
+    for qp,y in zip([5,10,15],[0.94,0.89,0.84]):
+        s = 50*(qp/qrad_max)**2
+        circle = mlines.Line2D([0], [0], marker='o', color='w',
+                        markerfacecolor='r', markersize=s)
+        ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+        ax.text(0.1,y,s=r'$\vert Q_{rad}\vert >%d$ K/day'%qp,fontsize=7,transform=ax.transAxes)
 
     # colorbar density
     axins1 = inset_axes(ax,
@@ -452,7 +490,7 @@ if __name__ == "__main__":
     # # legend pattern
     # for pat in col_pattern.keys():
     #     print(pat)
-    #     lab = pat 
+    #     lab = pat
     #     if pat == '':
     #         lab = 'unknown'
     #     setattr(thismodule,"h_%s"%pat,mpatches.Patch(color=col_pattern[pat],linewidth=0,alpha=0.6,label=lab))
@@ -460,11 +498,11 @@ if __name__ == "__main__":
     
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_allAbove5Kday_peak_heights_on_PW_sizeQRADLW_colDensity_all_days.pdf'),bbox_inches='tight')
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_allAbove5Kday_peak_heights_on_PW_sizeQRADLW_colDensity_all_days.png'),bbox_inches='tight')
-    
 
 
     #--- circle size: peak magnitude, all profiles for peak above 5 K/day
-    #--- color pattern, separate each day
+    #--- . color pattern, separate each day
+    #--- . only keep points in latlon box of analysis
     
     qrad_min = np.min([np.nanmin(np.absolute(rad_features_all[day].qrad_lw_peak)) for day in days])
     qrad_max = np.max([np.nanmax(np.absolute(rad_features_all[day].qrad_lw_peak)) for day in days])
@@ -477,8 +515,8 @@ if __name__ == "__main__":
         z_peak = rad_features_all[day].z_lw_peak/1e3 # km
         qrad_peak = np.absolute(rad_features_all[day].qrad_lw_peak)
         keep_large = qrad_peak > 5 # K/day
-        lon_day = data_all.sel(launch_time=day).longitude
-        lat_day = data_all.sel(launch_time=day).latitude
+        lon_day = data_all.sel(launch_time=day).longitude[:,10]
+        lat_day = data_all.sel(launch_time=day).latitude[:,10]
         keep_box = np.logical_and(lon_day < lon_box[1], lat_day >= lat_box[0])
         k = np.logical_and(keep_large,keep_box)
         
@@ -489,18 +527,28 @@ if __name__ == "__main__":
         
         ax.set_xlabel('PW (mm)')
         ax.set_ylabel(r'$z_{peak}$ (km)')
-        ax.set_xlim((28,91))
+        ax.set_xlim((17.5,54.5))
         ax.set_ylim((-0.3,9.6))
         
-        # legend QRAD
-        for d in 5,10,15:
-            setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                      marker='o', linestyle='None',linewidth=0,
-                          markersize=10*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
-        leg1 = ax.legend(loc='top left',handles=[h_5,h_10,h_15],fontsize=5)
-        plt.gca().add_artist(leg1)
-        # weird, marker size in legend is different than on figure -- adjust manually
+        # # legend QRAD
+        # for d in 5,10,15:
+        #     setattr(thismodule,"h_%d"%d,mlines.Line2D([], [], color='silver',alpha=0.6,
+        #                                               marker='o', linestyle='None',linewidth=0,
+        #                   markersize=10*(d/qrad_max)**2, label=r'$\vert Q_{rad}\vert >%d K/day$'%d))
+        # leg1 = ax.legend(loc='top left',handles=[h_5,h_10,h_15],fontsize=5)
+        # plt.gca().add_artist(leg1)
+        # # weird, marker size in legend is different than on figure -- adjust manually
         
+        ## Fully-manual legend QRAD
+        rect = mpatches.Rectangle((0.015,0.82), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+        ax.add_patch(rect)
+        for qp,y in zip([5,10,15],[0.94,0.89,0.84]):
+            s = 50*(qp/qrad_max)**2
+            circle = mlines.Line2D([0], [0], marker='o', color='w',
+                            markerfacecolor='r', markersize=s)
+            ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+            ax.text(0.1,y,s=r'$\vert Q_{rad}\vert >%d$ K/day'%qp,fontsize=7,transform=ax.transAxes)
+            
         # legend pattern
         for pat in col_pattern.keys():
             print(pat)
@@ -534,14 +582,24 @@ if __name__ == "__main__":
         ax.set_ylabel(r'peak $Q_{rad}^{LW}$ (K/day)')
         # ax.set_ylim((-0.3,9.6))
 
-    # legend QRAD
-    for z_leg in 2,4,6:
-        setattr(thismodule,"h_%d"%z_leg,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                  marker='o', linestyle='None',linewidth=0,
-                      markersize=8*((8-z_leg)/8)**2, label=r'$z_{peak}<%d km$'%z_leg))
-    leg1 = ax.legend(loc='top left',handles=[h_2,h_4,h_6],fontsize=5)
-    plt.gca().add_artist(leg1)
+    # # legend QRAD
+    # for z_leg in 2,4,6:
+    #     setattr(thismodule,"h_%d"%z_leg,mlines.Line2D([], [], color='silver',alpha=0.6,
+    #                                               marker='o', linestyle='None',linewidth=0,
+    #                   markersize=8*((8-z_leg)/8)**2, label=r'$z_{peak}<%d km$'%z_leg))
+    # leg1 = ax.legend(loc='top left',handles=[h_2,h_4,h_6],fontsize=5)
+    # plt.gca().add_artist(leg1)
     
+    ## Fully-manual legend QRAD
+    rect = mpatches.Rectangle((0.015,0.015), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+    ax.add_patch(rect)
+    for zp,y in zip([2,4,6],[0.135,0.085,0.035]):
+        s = 60*((8-zp)/8)**2
+        circle = mlines.Line2D([0], [0], marker='o', color='w',
+                        markerfacecolor='r', markersize=s)
+        ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+        ax.text(0.1,y,s=r'$z_{peak} <%d$ K/day'%zp,fontsize=7,transform=ax.transAxes)
+            
     # legend pattern
     for pat in col_pattern.keys():
         print(pat)
@@ -578,14 +636,24 @@ if __name__ == "__main__":
         ax.set_ylabel(r'peak $Q_{rad}^{LW}$ (K/day)')
         # ax.set_ylim((-0.3,9.6))
 
-    # legend QRAD
-    for z_leg in 2,4,6:
-        setattr(thismodule,"h_%d"%z_leg,mlines.Line2D([], [], color='silver',alpha=0.6,
-                                                  marker='o', linestyle='None',linewidth=0,
-                      markersize=8*((8-z_leg)/8)**2, label=r'$z_{peak}<%d km$'%z_leg))
-    leg1 = ax.legend(loc='top left',handles=[h_2,h_4,h_6],fontsize=5)
-    plt.gca().add_artist(leg1)
+    # # legend QRAD
+    # for z_leg in 2,4,6:
+    #     setattr(thismodule,"h_%d"%z_leg,mlines.Line2D([], [], color='silver',alpha=0.6,
+    #                                               marker='o', linestyle='None',linewidth=0,
+    #                   markersize=8*((8-z_leg)/8)**2, label=r'$z_{peak}<%d km$'%z_leg))
+    # leg1 = ax.legend(loc='top left',handles=[h_2,h_4,h_6],fontsize=5)
+    # plt.gca().add_artist(leg1)
     
+    ## Fully-manual legend QRAD
+    rect = mpatches.Rectangle((0.015,0.015), width=0.3, height=0.16,edgecolor='grey', facecolor="none",linewidth=0.5,alpha=0.5, transform=ax.transAxes)
+    ax.add_patch(rect)
+    for zp,y in zip([2,4,6],[0.135,0.085,0.035]):
+        s = 60*((8-zp)/8)**2
+        circle = mlines.Line2D([0], [0], marker='o', color='w',
+                        markerfacecolor='r', markersize=s)
+        ax.scatter(0.05,y+0.01,s=s,c='k',edgecolor='',transform=ax.transAxes)
+        ax.text(0.1,y,s=r'$z_{peak} <%d$ K/day'%zp,fontsize=7,transform=ax.transAxes)
+        
     # legend pattern
     for pat in col_pattern.keys():
         print(pat)
@@ -620,14 +688,6 @@ if __name__ == "__main__":
         # ax.set_xlabel('PW (mm)')
         # ax.set_ylabel(r'peak $Q_{rad}^{LW}$ (K/day)')
         # ax.set_ylim((-0.3,9.6))
-
-    # # legend QRAD
-    # for z_leg in 2,4,6:
-    #     setattr(thismodule,"h_%d"%z_leg,mlines.Line2D([], [], color='silver',alpha=0.6,
-    #                                               marker='o', linestyle='None',linewidth=0,
-    #                   markersize=8*((8-z_leg)/8)**2, label=r'$z_{peak}<%d km$'%z_leg))
-    # leg1 = ax.legend(loc='top left',handles=[h_2,h_4,h_6],fontsize=5)
-    # plt.gca().add_artist(leg1)
     
     # legend pattern
     for pat in col_pattern.keys():
@@ -657,10 +717,10 @@ if __name__ == "__main__":
         z_peak = rad_features_all[day].z_lw_peak/1e3 # km
         # filters
         keep_large = np.absolute(qrad_peak) > 5 # K/day
-        keep_box = np.logical_and(np.logical_and(data_day.longitude[:,0] > lon_box[0],
-                                              data_day.longitude[:,0] < lon_box[1]),
-                               np.logical_and(data_day.latitude[:,0] > lat_box[0],
-                                              data_day.latitude[:,0] < lat_box[1]))
+        keep_box = np.logical_and(np.logical_and(data_day.longitude.values[:,10] > lon_box[0],
+                                              data_day.longitude.values[:,10] < lon_box[1]),
+                               np.logical_and(data_day.latitude.values[:,10] > lat_box[0],
+                                              data_day.latitude.values[:,10] < lat_box[1]))
         k = np.logical_and(keep_large,keep_box)
 
         s = 60*((8-z_peak)/8)**2
@@ -694,6 +754,7 @@ if __name__ == "__main__":
     
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_profiles_allAbove5Kday_colPattern_alphaConfidence_all_days.pdf'),bbox_inches='tight')
     plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_profiles_allAbove5Kday_colPattern_alphaConfidence_all_days.png'),bbox_inches='tight')
+
 
 
 #%%    ##-- Draw peak heights and QRADLW|PW on separate plots
@@ -735,8 +796,8 @@ if __name__ == "__main__":
         cb.set_label(r'QRADLW (K/day)')
         
         plt.savefig(os.path.join(figdir,scriptsubdir,'QRADLW_on_PW_z_with_peaks_%s.pdf'%(day)),bbox_inches='tight')
-    
-    
+
+
 #%%     Draw maps with p_peak (hPa) as colored scatter plot
 
     lon_range = lon_box_full

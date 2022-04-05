@@ -21,7 +21,7 @@ import thermoFunctions as tf
 class Features():
     """Finds and stores characteristics of the peak radiative cooling"""
     
-    def __init__(self,pres,z,dz_smooth=0.15):
+    def __init__(self,pres,z,launch_time=None,dz_smooth=0.15):
         """Class constructor
         
         Arguments:
@@ -31,6 +31,7 @@ class Features():
 
         self.pres = pres        
         self.z = z
+        self.launch_time = launch_time
         self.dz_smooth = dz_smooth
         self.mo = MatrixOperators()
 
@@ -185,7 +186,7 @@ class Features():
         Ns,Np = qv.shape
         self.wp_z = np.full((Ns,Np),np.nan)
         
-            
+        
         # for i_z in range(Nz-2):
 
         #     # test order
@@ -216,8 +217,8 @@ class Features():
                 p0 = p[0]
                 p1 = p[i_p]
                 i_w = i_p
-                
-            else:    
+
+            else:
 
                 arr = np.flip(qv,axis=z_axis)
                 p = np.flip(pres)
@@ -265,6 +266,23 @@ class Features():
                 
             self.wpsat_z[:,i_w] = self.mo.pressureIntegral(arr=arr,pres=p,p0=p0,p1=p1,z_axis=z_axis)
 
+    # def computeRH(self,qv,temp,pres,z_axis=1):
+    #     """Calculates the integrated water path of saturation specific humidity above each level.
+        
+    #     Arguments:
+    #         - qv: specific humidity in kg/kg, Ns x Nz matrix
+    #         - temp: temperature in K, Ns x Nz matrix
+    #         - pres: pressure coordinate in hPa, Nz vector
+            
+    #     Stores:
+    #         - self.wpsat_z: water path above each level, Ns x Nz matrix"""
+
+    #     hPa_to_Pa = 1e2
+        
+    #     qvsat = tf.saturationSpecificHumidity(temp,pres*hPa_to_Pa)
+    #     qv = 
+        
+        
 
 class RadiativeFeaturesFromXarray():
     """Finds and stores characteristics of the peak radiative cooling"""

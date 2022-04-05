@@ -86,15 +86,15 @@ if __name__ == "__main__":
     # day = '20200126'
     date = pytz.utc.localize(dt.strptime(day,'%Y%m%d'))
     ref_varid = 'PW'
-    ref_var_min = 20 # mm
-    ref_var_max = 80 # mm
+    ref_var_min = 15 # mm
+    ref_var_max = 55 # mm
     nbins = int((ref_var_max-ref_var_min)/2)
     
-    # cond_varids = 'q_rad','q_rad_sw','q_rad_lw','specific_humidity','u_norm','temperature'
-    # cond_varids_cap = 'QRAD','QRADSW','QRADLW','QV','UNORM','T'
+    cond_varids = 'pressure','q_rad','q_rad_sw','q_rad_lw','specific_humidity','u_norm','temperature'
+    cond_varids_cap = 'P','QRAD','QRADSW','QRADLW','QV','UNORM','T'
     
-    cond_varids = 'pressure',
-    cond_varids_cap = 'P',
+    # cond_varids = 'pressure',
+    # cond_varids_cap = 'P',
     
     defineSimDirectories(day)
     
@@ -117,6 +117,7 @@ if __name__ == "__main__":
     pres = data_day.pressure.data/1e2 # hPa
     pres_mean = np.nanmean(pres,axis=dim_t) # hPa
     z = data_day.alt.data # m
+    launch_time = data_day.launch_time.values
     # p_levmin = 1010 # hPa
     # p_levmax = 200 # hPa
     # PW_all = mo.pressureIntegral(QV_all,pres,p_levmin=p_levmin,p_levmax=p_levmax,z_axis=dim_z)
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     
     # Initialize
     # f = FeaturesFromXarray()
-    f = Features(pres_mean,z)
+    f = Features(pres_mean,z,launch_time)
     # Find peaks in net Q_rad
     f.computePeaks(data_day.q_rad.data,which='net')
     # Find peaks in LW Q_rad
@@ -160,14 +161,14 @@ if __name__ == "__main__":
     ref_dist_path = os.path.join(resultdir,day,ref_filename)
     ref_dist_exists = len(glob.glob(ref_dist_path)) > 0
 
-        
+
     if ref_dist_exists and not args.overwrite:
-        
+    
         print('-load existing reference %s distribution'%ref_varid)
         ref_dist = pickle.load(open(ref_dist_path,'rb'))
     
     else:
-        
+    
         print("- compute reference %s distribution"%ref_varid)
         # fix range to the total range for each time slice
         var = f.pw
@@ -190,6 +191,7 @@ if __name__ == "__main__":
         cond_dist_exists = len(glob.glob(cond_dist_path)) > 0
         
         if not cond_dist_exists or args.overwrite:
+            print('. for %s'%cond_varid)
             
             if cond_varid == 'u_norm':
                 cond_var = np.sqrt(np.power(np.swapaxes(getattr(data_day,'u_wind').data,0,1),2),\
