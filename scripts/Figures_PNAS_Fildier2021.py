@@ -34,6 +34,9 @@ from scipy import optimize
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 
+from scipy.optimize import curve_fit
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
 ##-- directories
 
 # workdir = os.path.dirname(os.path.realpath(__file__))
@@ -926,6 +929,153 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     plt.savefig(os.path.join(figdir,'Figure1.pdf'),bbox_inches='tight')
     
 
+#%%     Precalculations for Fig 2 -- all scalings
+
+    #- First scaling magnitude (eq 8)
+    
+    H_peak_all = {}
+
+    days2show = days
+    
+    for day in days2show:
+        
+        rs = rad_scaling_all[day]
+        f = rad_scaling_all[day].rad_features
+        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
+        
+        #- approximated peak
+        # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
+        Ns = rad_scaling_all[day].rad_features.pw.size
+        H_peak = np.full(Ns,np.nan)
+        for i_s in range(Ns):
+            i_peak = f.i_lw_peak[i_s]
+            p_peak = f.pres_lw_peak[i_s]
+            
+            # beta
+            beta = f.beta_peak[i_s]
+            # spectral integral
+            spec_int = rs.spectral_integral_rot[i_s][i_peak] + rs.spectral_integral_vr[i_s][i_peak]
+            # constants
+            C = -gg/c_pd
+            
+            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * beta * spec_int * day_to_seconds
+            
+        H_peak_all[day] = H_peak
+        
+        
+    scaling_1 = np.hstack([H_peak_all[day] for day in days2show])
+    
+    #- Second scaling magnitude (eq 9)
+    
+    H_peak_all = {}
+    
+    days2show = days
+    
+    for day in days2show:
+        
+        rs = rad_scaling_all[day]
+        f = rad_scaling_all[day].rad_features
+        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
+        
+        #- approximated peak
+        Ns = rad_scaling_all[day].rad_features.pw.size
+        H_peak = np.full(Ns,np.nan)
+        
+        for i_s in range(Ns):
+
+            i_peak = f.i_lw_peak[i_s]
+            p_peak = f.pres_lw_peak[i_s]
+            
+            # beta
+            beta = f.beta_peak[i_s]
+            # approximation of spectral integral
+            piB_star = 0.0054 # (sum of piB in rotational and v-r bands)
+            delta_nu = 1 # cm-1
+            spec_int_approx = piB_star * delta_nu*m_to_cm/e
+            # constants
+            C = -gg/c_pd
+            
+            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * beta * spec_int_approx * day_to_seconds
+        
+        H_peak_all[day] = H_peak
+        
+    scaling_2_core = np.hstack([H_peak_all[day] for day in days2show])
+    
+    # spectral width fitted between scaling 1 and 2
+    
+    def f_linear(x,a):
+        return a*x
+    
+    fit_params = curve_fit(f_linear,scaling_2_core,scaling_1,p0=1)
+    
+    # spectral width fitted
+    delta_nu_fitted = fit_params[0][0]
+    delta_nu = 120
+    # scaling 2
+    scaling_2 = delta_nu*scaling_2_core
+
+    #- Third scaling magnitude (eq 10)
+    
+    H_peak_all = {}
+    
+    days2show = days
+    
+    for day in days2show:
+        
+        rs = rad_scaling_all[day]
+        f = rad_scaling_all[day].rad_features
+        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
+        
+        #- approximated peak
+        # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
+        Ns = rad_scaling_all[day].rad_features.pw.size
+        H_peak = np.full(Ns,np.nan)
+        for i_s in range(Ns):
+            i_peak = f.i_lw_peak[i_s]
+            p_peak = f.pres_lw_peak[i_s]
+            
+            # CRH above = W(p)/Wsat(p)
+            CRHabove = f.wp_z[i_s]/f.wpsat_z[i_s]
+            # CRH below = (W_s-W(p))/(Wsat_s-Wsat(p))
+            CRHbelow = (f.wp_z[i_s,k_bottom]-f.wp_z[i_s])/(f.wpsat_z[i_s,k_bottom]-f.wpsat_z[i_s])
+            # approximation of spectral integral
+            piB_star = 0.0054
+            delta_nu = delta_nu # cm-1
+            spec_int_approx = piB_star * delta_nu*m_to_cm/e
+            # constants
+            alpha = 1.5
+            C = -gg/c_pd * (1+alpha)
+            
+            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * CRHbelow[i_peak]/CRHabove[i_peak] * spec_int_approx * day_to_seconds
+        
+        H_peak_all[day] = H_peak
+    
+    
+    scaling_3 = np.hstack([H_peak_all[day] for day in days2show])
+    
+    
+    # true qrad magnitude
+    qrad_peak_all = {}    
+    days2show = days
+    
+    for day in days2show:
+        qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
+        qrad_peak_all[day] = qrad_peak
+    
+    true_qrad = np.hstack([qrad_peak_all[day] for day in days2show])
+    
+    
+    # marker size
+    # s_all = []
+    # days2show = days
+    
+    # for day in days2show:
+    
+    #     s_all.append(0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak))
+    
+    # s = np.hstack(s_all)
+    s = 0.005
+
 #%% --- Figure 2 ---
 
     label_jump = '^\dagger'
@@ -933,11 +1083,21 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     day_to_seconds = 86400
     hPa_to_Pa = 1e2
 
+    # import mpl_scatter_density
+    # import datashader as ds
+    # from datashader.mpl_ext import dsshow
+    # import pandas as pd
+    
     def scatterDensity(ax,x,y,s,alpha):
         xy = np.vstack([x,y])
         z = gaussian_kde(xy)(xy)
-        ax.scatter(x,y,c=z,s=s,alpha=0.4)
-    
+        return ax.scatter(x,y,c=z,s=s,alpha=0.4)
+
+    # def scatterDensity(ax,x,y,s,alpha=0.4):
+        
+        # return ax.scatter_density(x,y,c=z,s=s,alpha=alpha)
+        
+
 
     fig,axs = plt.subplots(ncols=2,nrows=2,figsize=(10,10))
     plt.subplots_adjust(hspace=0.3,wspace=0.3)
@@ -967,10 +1127,11 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     
     # peaks
     x,y,s = np.hstack(x),np.hstack(y),np.hstack(s)
-    scatterDensity(ax,x,y,s,alpha=0.4)
+    h = scatterDensity(ax,x,y,s,alpha=0.4)
     # 1:1 line
     ax.plot([910,360],[910,360],'k',linewidth=0.5,alpha=0.5)
 
+    
     ax.invert_xaxis()
     ax.invert_yaxis()
     ax.set_xlabel('$Q_{rad}$ peak height (hPa)')
@@ -980,54 +1141,27 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     ylim = ax.get_ylim()
     ax.set_xlim(ylim)
     
-        # ax.set_title(r'Approximating peak height\n as $p^\star = \arg\max_p \left(-\frac{g}{c_p}\frac{\beta}{p}\int B_\nu \phi_\nu\right)$')
+    # ax.set_title(r'Approximating peak height\n as $p^\star = \arg\max_p \left(-\frac{g}{c_p}\frac{\beta}{p}\int B_\nu \phi_\nu\right)$')
+    
+    # colorbar density
+    axins1 = inset_axes(ax,
+                    width="50%",  # width = 70% of parent_bbox width
+                    height="2%",  # height : 5%
+                    loc='lower right')
+    cb = fig.colorbar(h, cax=axins1, orientation="horizontal")
+    axins1.xaxis.set_ticks_position("top")
+    axins1.tick_params(axis='x', labelsize=9)
+    cb.set_label('Gaussian kernel density',labelpad=-34)
     
     
     #-- (b) peak magnitude, using the approximation for the full profile, showing all profiles
     ax = axs[0,1]
     
-    H_peak_all = {}
-    qrad_peak_all = {}
-    s = []
-    
-    days2show = days
-    
-    for day in days2show:
-        
-        rs = rad_scaling_all[day]
-        f = rad_scaling_all[day].rad_features
-        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
-        
-        #- approximated peak
-        # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
-        Ns = rad_scaling_all[day].rad_features.pw.size
-        H_peak = np.full(Ns,np.nan)
-        for i_s in range(Ns):
-            i_peak = f.i_lw_peak[i_s]
-            p_peak = f.pres_lw_peak[i_s]
-            
-            # beta
-            beta = f.beta_peak[i_s]
-            # spectral integral
-            spec_int = rs.spectral_integral_rot[i_s][i_peak] + rs.spectral_integral_vr[i_s][i_peak]
-            # constants
-            C = -gg/c_pd
-            
-            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * beta * spec_int * day_to_seconds
-            
-        H_peak_all[day] = H_peak
-        
-        #- true peak
-        qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
-        qrad_peak_all[day] = qrad_peak
-        
-        s.append(0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak))
-
     # plot
-    x = np.hstack([qrad_peak_all[day] for day in days2show])
-    y = np.hstack([H_peak_all[day] for day in days2show])
-    s = np.hstack(s)
-    scatterDensity(ax,x,y,s,alpha=0.5)
+    x = true_qrad
+    y = scaling_1
+    s = 5
+    h = scatterDensity(ax,x,y,s,alpha=0.5)
     
     # # 1:1 line
     # x_ex = np.array([-18,-2])
@@ -1035,7 +1169,7 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     
     ax.set_xlabel('True LW $Q_{rad}$ (K/day)')
     ax.set_ylabel('Estimate (K/day)')
-    ax.set_title(r'Magnitude as $-\frac{g}{c_p} \frac{\beta%s}{p%s} \int B \phi d\nu$'%(label_jump,label_jump))
+    ax.set_title(r'Magnitude scaling, eq. (8)')
     # square figure limits
     xlim = (-20.4,-1.6)
     ax.set_xlim(xlim)
@@ -1053,57 +1187,25 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     # show
     ax.plot(x_fit,y_fit,'k:')
     # write numbers
-    ax.text(0.65,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
+    ax.text(0.05,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
     
-
+    # colorbar density
+    axins1 = inset_axes(ax,
+                    width="50%",  # width = 70% of parent_bbox width
+                    height="2%",  # height : 5%
+                    loc='lower right')
+    cb = fig.colorbar(h, cax=axins1, orientation="horizontal")
+    axins1.xaxis.set_ticks_position("top")
+    axins1.tick_params(axis='x', labelsize=9)
+    cb.set_label('Gaussian kernel density',labelpad=-34)
+    
     #-- (c) peak magnitude, using the intermediate approximation (beta and 1 wavenumber), showing all profiles
     ax = axs[1,0]
-    
-    H_peak_all = {}
-    qrad_peak_all = {}
-    s = []
-    
-    days2show = days
-    
-    for day in days2show:
-        
-        rs = rad_scaling_all[day]
-        f = rad_scaling_all[day].rad_features
-        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
-        
-        #- approximated peak
-        Ns = rad_scaling_all[day].rad_features.pw.size
-        H_peak = np.full(Ns,np.nan)
-        
-        for i_s in range(Ns):
-
-            i_peak = f.i_lw_peak[i_s]
-            p_peak = f.pres_lw_peak[i_s]
-            
-            # beta
-            beta = f.beta_peak[i_s]
-            # approximation of spectral integral
-            piB_star = 0.0054 # (sum of piB in rotational and v-r bands)
-            delta_nu = 120 # cm-1
-            spec_int_approx = piB_star * delta_nu*m_to_cm/e
-            # constants
-            C = -gg/c_pd
-            
-            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * beta * spec_int_approx * day_to_seconds
-        
-        H_peak_all[day] = H_peak
-        
-        #- true peak
-        qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
-        qrad_peak_all[day] = qrad_peak
-        
-        s.append(0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak))
         
     # plot
-    x = np.hstack([qrad_peak_all[day] for day in days2show])
-    y = np.hstack([H_peak_all[day] for day in days2show])
-    s = np.hstack(s)
-    scatterDensity(ax,x,y,s,alpha=0.5)
+    x = true_qrad
+    y = scaling_2
+    h = scatterDensity(ax,x,y,s,alpha=0.5)
 
     # # 1:1 line
     # x_ex = np.array([-18,-2])
@@ -1111,7 +1213,7 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     
     ax.set_xlabel('True LW $Q_{rad}$ (K/day)')
     ax.set_ylabel('Estimate (K/day)')
-    ax.set_title(r'Magnitude as $-\frac{g}{c_p} \frac{\beta%s}{p%s} B_{\nu^\star} \frac{\Delta \nu}{e}$'%(label_jump,label_jump))
+    ax.set_title(r'Magnitude scaling, eq. (9)')
     # square figure limits
     xlim = (-20.4,-1.6)
     ax.set_xlim(xlim)
@@ -1128,59 +1230,26 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     # show
     ax.plot(x_fit,y_fit,'k:')
     # write numbers
-    ax.text(0.65,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
+    ax.text(0.05,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
     
+    # colorbar density
+    axins1 = inset_axes(ax,
+                    width="50%",  # width = 70% of parent_bbox width
+                    height="2%",  # height : 5%
+                    loc='lower right')
+    cb = fig.colorbar(h, cax=axins1, orientation="horizontal")
+    axins1.xaxis.set_ticks_position("top")
+    axins1.tick_params(axis='x', labelsize=9)
+    cb.set_label('Gaussian kernel density',labelpad=-34)
     
     #-- (d) peak magnitude, using the simplified scaling (RH step function and 1 wavenumber), showing all profiles
     ax = axs[1,1]
-    
-    H_peak_all = {}
-    qrad_peak_all = {}
-    s = []
-    
-    days2show = days
-    
-    for day in days2show:
-        
-        rs = rad_scaling_all[day]
-        f = rad_scaling_all[day].rad_features
-        k_bottom = np.where(np.logical_not(np.isnan(f.wp_z[0])))[0][0] 
-        
-        #- approximated peak
-        # H_peak = rad_scaling_all[day].scaling_magnitude_lw_peak*1e8
-        Ns = rad_scaling_all[day].rad_features.pw.size
-        H_peak = np.full(Ns,np.nan)
-        for i_s in range(Ns):
-            i_peak = f.i_lw_peak[i_s]
-            p_peak = f.pres_lw_peak[i_s]
-            
-            # CRH above = W(p)/Wsat(p)
-            CRHabove = f.wp_z[i_s]/f.wpsat_z[i_s]
-            # CRH below = (W_s-W(p))/(Wsat_s-Wsat(p))
-            CRHbelow = (f.wp_z[i_s,k_bottom]-f.wp_z[i_s])/(f.wpsat_z[i_s,k_bottom]-f.wpsat_z[i_s])
-            # approximation of spectral integral
-            piB_star = 0.0054
-            delta_nu = 120 # cm-1
-            spec_int_approx = piB_star * delta_nu*m_to_cm/e
-            # constants
-            alpha = 1.5
-            C = -gg/c_pd * (1+alpha)
-            
-            H_peak[i_s] = C/(p_peak*hPa_to_Pa) * CRHbelow[i_peak]/CRHabove[i_peak] * spec_int_approx * day_to_seconds
-        
-        H_peak_all[day] = H_peak
-    
-        #- true peak
-        qrad_peak = rad_scaling_all[day].rad_features.lw_peaks.qrad_lw_peak
-        qrad_peak_all[day] = qrad_peak
-    
-        s.append(0.005*np.absolute(rad_scaling_all[day].rad_features.lw_peaks.pres_lw_peak))
-    
+
     # plot
-    x = np.hstack([qrad_peak_all[day] for day in days2show])
-    y = np.hstack([H_peak_all[day] for day in days2show])
-    s = np.hstack(s)
-    scatterDensity(ax,x,y,s,alpha=0.5)
+    x = true_qrad
+    y = scaling_3
+    
+    h = scatterDensity(ax,x,y,s,alpha=0.5)
 
     # # 1:1 line
     # x_ex = np.array([-18,-2])
@@ -1188,7 +1257,7 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     
     ax.set_xlabel('True LW $Q_{rad}$ (K/day)')
     ax.set_ylabel('Estimate (K/day)')
-    ax.set_title(r'Magnitude as $-\frac{g}{c_p} \frac{1}{p%s} (1+\alpha) \frac{CRH_s}{CRH_t} B_{\nu^\star} \frac{\Delta \nu}{e}$'%label_jump)
+    ax.set_title(r'Magnitude scaling, eq. (10)')
     # square figure limits
     xlim = (-20.4,-1.6)
     ax.set_xlim(xlim)
@@ -1205,7 +1274,17 @@ def zoom_effect_xaxis(ax1, ax2, **kwargs):
     # show
     ax.plot(x_fit,y_fit,'k:')
     # write numbers
-    ax.text(0.65,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
+    ax.text(0.05,0.05,'$Q_{rad}^{est} = %1.2f Q_{rad} $\n r=%1.2f'%(a_fit,r_fit),transform=ax.transAxes)
+    
+    # colorbar density
+    axins1 = inset_axes(ax,
+                    width="50%",  # width = 70% of parent_bbox width
+                    height="2%",  # height : 5%
+                    loc='lower right')
+    cb = fig.colorbar(h, cax=axins1, orientation="horizontal")
+    axins1.xaxis.set_ticks_position("top")
+    axins1.tick_params(axis='x', labelsize=9)
+    cb.set_label('Gaussian kernel density',labelpad=-34)
     
     #--- Add panel labeling
     pan_labs = '(a)','(b)','(c)','(d)'
@@ -2263,7 +2342,7 @@ for i_W in range(Nsample):
 qradlw_peak_ref = radprf['q_rad_lw'].data[i_ref].data[i_jump]
 delta_qradlw_peak = qradlw_peak-qradlw_peak_ref
 
-#- filled contour
+#- filled and unfilled contours
 
 qrad_2_show = delta_qradlw_peak.T
 cmap = plt.cm.ocean

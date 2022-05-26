@@ -16,10 +16,10 @@ for day in `echo $days`; do
     echo
     echo "-- compute radiative features and distributions"
     echo
-    python computeFeatures.py --day $day --overwrite True #(overwrite not yet implemented)
+#    python computeFeatures.py --day $day --overwrite True #(overwrite not yet implemented)
 
     echo "draw PW composites"
-    python drawCompositesPWz.py --day $day --overwrite True
+#    python drawCompositesPWz.py --day $day --overwrite True
 
 #    echo "draw figures for proxy Qrad peak"
 #    python proxyQradPeakAnalysis.py --day $day --overwrite True

@@ -146,7 +146,7 @@ class RadiativeScaling():
         self.ln_W = np.log(self.rad_features.wp_z)
         self.ln_p = np.log(self.pres) # Pa
         self.ln_p_mean = np.nanmean(self.ln_p,axis=0)
-        self.beta,_ = self.mo.derivative(self.ln_W,self.ln_p_mean,axis=1)
+        self.beta,_ = self.mo.deriv(self.ln_W,self.ln_p_mean,axis=1)
         self.beta_over_p = self.beta/self.pres # Pa-1
     
     def computeSpectralIntegral(self,band='rot'):
@@ -337,7 +337,7 @@ class RadiativeScaling():
         self.computeBetaPeaks()
         # magnitude
         self.computeScalingPeakMagnitude()
-        self.computeScalingPeakMagnitude(B_star = 0.004) # fix B_star
+        self.computeScalingPeakMagnitude(B_star = 0.0054) # fix B_star
         
         
         
